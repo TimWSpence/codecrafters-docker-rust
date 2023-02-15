@@ -1,4 +1,6 @@
 use anyhow::{Context, Result};
+use std::io;
+use std::io::Write;
 
 // Usage: your_docker.sh run <image> <command> <arg1> <arg2> ...
 fn main() -> Result<()> {
@@ -18,10 +20,10 @@ fn main() -> Result<()> {
             )
         })?;
 
-    if output.status.success() {
-        let std_out = std::str::from_utf8(&output.stdout)?;
-        println!("{}", std_out);
-    } else {
+    io::stdout().write_all(&output.stdout).unwrap();
+    io::stderr().write_all(&output.stderr).unwrap();
+
+    if !output.status.success() {
         std::process::exit(1);
     }
 
