@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use std::io;
 use std::io::Write;
+use std::process::exit;
 
 // Usage: your_docker.sh run <image> <command> <arg1> <arg2> ...
 fn main() -> Result<()> {
@@ -20,9 +21,8 @@ fn main() -> Result<()> {
     io::stdout().write_all(&output.stdout).unwrap();
     io::stderr().write_all(&output.stderr).unwrap();
 
-    if !output.status.success() {
-        std::process::exit(1);
+    match output.status.code() {
+        Some(n) => exit(n),
+        _ => exit(-1),
     }
-
-    Ok(())
 }
