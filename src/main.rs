@@ -7,16 +7,24 @@ use std::io::Write;
 use std::os::unix::fs::chroot;
 use std::process::exit;
 use tempfile::tempdir;
+mod base_image;
+use base_image::*;
 
 // Usage: your_docker.sh run <image> <command> <arg1> <arg2> ...
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let args: Vec<_> = std::env::args().collect();
+    let _image = &args[2];
     let command = &args[3];
     let command_args = &args[4..];
+
+    let mut client = ApiClient::new();
+    client.get_manifest("alpine", "latest").await?;
 
     change_root(command)?;
 
     let status = run_command(command, command_args)?;
+
     match status {
         Some(n) => exit(n),
         _ => exit(-1),
