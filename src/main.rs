@@ -14,14 +14,14 @@ use base_image::*;
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<_> = std::env::args().collect();
-    let _image = &args[2];
+    let image = &args[2];
     let command = &args[3];
     let command_args = &args[4..];
 
     change_root(command)?;
 
     let mut client = ApiClient::new();
-    client.pull_layers("alpine:latest").await?;
+    client.pull_layers(image).await?;
 
     let status = run_command(command, command_args)?;
 
