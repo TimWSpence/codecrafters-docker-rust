@@ -18,10 +18,10 @@ async fn main() -> Result<()> {
     let command = &args[3];
     let command_args = &args[4..];
 
-    let mut client = ApiClient::new();
-    client.get_manifest("alpine", "latest").await?;
-
     change_root(command)?;
+
+    let mut client = ApiClient::new();
+    client.pull_layers("alpine:latest").await?;
 
     let status = run_command(command, command_args)?;
 

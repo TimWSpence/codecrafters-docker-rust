@@ -1,6 +1,11 @@
+use std::io::Cursor;
+
+use ::bytes::{Buf, Bytes};
 use anyhow::Result;
+use flate2::bufread::GzDecoder;
 use regex::*;
 use serde::Deserialize;
+use tar::Archive;
 
 #[derive(Deserialize, Debug)]
 pub struct Manifest {
@@ -25,8 +30,26 @@ impl ApiClient {
         }
     }
 
-    pub async fn get_manifest(&mut self, name: &str, reference: &str) -> Result<Manifest> {
-        let mut resp = self.manifest_request(name, reference).send().await?;
+    pub async fn pull_layers(&mut self, image: &str) -> Result<()> {
+        let image: Image = image.into();
+        let manifest = self.get_manifest(&image).await?;
+
+        for layer in manifest.fsLayers.into_iter() {
+            let bytes = self.fetch_layer(&image.name, layer.blobSum).await?;
+            self.unpack(bytes)?;
+        }
+        Ok(())
+    }
+
+    fn unpack(&self, bytes: Bytes) -> Result<()> {
+        let tar = GzDecoder::new(Cursor::new(bytes).reader());
+        let mut archive = Archive::new(tar);
+        archive.unpack("/")?;
+        Ok(())
+    }
+
+    async fn get_manifest(&mut self, image: &Image) -> Result<Manifest> {
+        let mut resp = self.manifest_request(&image).send().await?;
         if resp.status().as_u16() == 401 {
             let info: AuthInfo = resp
                 .headers()
@@ -34,21 +57,35 @@ impl ApiClient {
                 .unwrap()
                 .to_str()?
                 .into();
-            println!("{:?}", info);
             self.authorize(info).await?;
-            resp = self.manifest_request(name, reference).send().await?;
+            resp = self.manifest_request(&image).send().await?;
         };
         let manifest = resp.json::<Manifest>().await?;
-        println!("{:?}", manifest);
         Ok(manifest)
     }
 
-    fn manifest_request(&self, name: &str, reference: &str) -> reqwest::RequestBuilder {
+    async fn fetch_layer(&self, name: &String, digest: String) -> Result<Bytes> {
+        let resp = self
+            .client
+            .get(format!(
+                "https://registry.hub.docker.com/v2/library/{}/blobs/{}",
+                name, digest
+            ))
+            // Should have been set in manifest fetch
+            .bearer_auth(self.token.as_ref().unwrap())
+            .send()
+            .await?;
+        println!("Layer content length: {:?}", resp.content_length());
+        let bytes = resp.bytes().await?;
+        Ok(bytes)
+    }
+
+    fn manifest_request(&self, image: &Image) -> reqwest::RequestBuilder {
         let mut req = self
             .client
             .get(format!(
                 "https://registry.hub.docker.com/v2/library/{}/manifests/{}",
-                name, reference
+                image.name, image.reference
             ))
             .header(
                 "Accept",
@@ -98,6 +135,21 @@ impl From<&str> for AuthInfo {
                 scope: m.get(3).unwrap().as_str().to_string(),
             },
             _ => panic!(""),
+        }
+    }
+}
+
+struct Image {
+    name: String,
+    reference: String,
+}
+
+impl From<&str> for Image {
+    fn from(value: &str) -> Self {
+        let mut split = value.split(":");
+        Image {
+            name: split.next().unwrap().to_string(),
+            reference: split.next().unwrap().to_string(),
         }
     }
 }
