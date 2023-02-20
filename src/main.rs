@@ -1,4 +1,6 @@
 use anyhow::{Context, Result};
+#[cfg(target_os = "linux")]
+use libc;
 use std::fs;
 use std::io;
 use std::io::Write;
@@ -24,6 +26,11 @@ fn main() -> Result<()> {
     std::env::set_current_dir("/")?;
     fs::create_dir("/dev")?;
     fs::File::create("/dev/null")?;
+
+    #[cfg(target_os = "linux")]
+    unsafe {
+        libc::unshare(libc::CLONE_NEWPID);
+    }
 
     let output = std::process::Command::new(command)
         .args(command_args)
