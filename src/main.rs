@@ -13,6 +13,17 @@ fn main() -> Result<()> {
     let args: Vec<_> = std::env::args().collect();
     let command = &args[3];
     let command_args = &args[4..];
+
+    change_root(command)?;
+
+    let status = run_command(command, command_args)?;
+    match status {
+        Some(n) => exit(n),
+        _ => exit(-1),
+    }
+}
+
+fn change_root(command: &str) -> Result<()> {
     let root = tempdir()?;
     let relative_command = match command.strip_prefix("/") {
         Some(p) => p,
@@ -26,7 +37,10 @@ fn main() -> Result<()> {
     std::env::set_current_dir("/")?;
     fs::create_dir("/dev")?;
     fs::File::create("/dev/null")?;
+    Ok(())
+}
 
+fn run_command(command: &str, command_args: &[String]) -> Result<Option<i32>> {
     #[cfg(target_os = "linux")]
     unsafe {
         libc::unshare(libc::CLONE_NEWPID);
@@ -45,8 +59,5 @@ fn main() -> Result<()> {
     io::stdout().write_all(&output.stdout)?;
     io::stderr().write_all(&output.stderr)?;
 
-    match output.status.code() {
-        Some(n) => exit(n),
-        _ => exit(-1),
-    }
+    Ok(output.status.code())
 }
