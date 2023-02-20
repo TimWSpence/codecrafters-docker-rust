@@ -75,7 +75,6 @@ impl ApiClient {
             .bearer_auth(self.token.as_ref().unwrap())
             .send()
             .await?;
-        println!("Layer content length: {:?}", resp.content_length());
         let bytes = resp.bytes().await?;
         Ok(bytes)
     }
