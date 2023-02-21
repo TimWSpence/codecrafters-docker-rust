@@ -148,7 +148,7 @@ impl From<&str> for Image {
         let mut split = value.split(":");
         Image {
             name: split.next().unwrap().to_string(),
-            reference: split.next().unwrap().to_string(),
+            reference: split.next().get_or_insert("latest").to_string()
         }
     }
 }
