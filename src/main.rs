@@ -46,7 +46,7 @@ fn change_root(root: TempDir, command: &str) -> Result<()> {
     fs::copy(command, root.path().join(relative_command))?;
     chroot(&root)?;
     std::env::set_current_dir("/")?;
-    fs::create_dir("/dev")?;
+    fs::create_dir_all("/dev")?;
     fs::File::create("/dev/null")?;
     Ok(())
 }

@@ -23,7 +23,7 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
-    const API_ROOT: &'static str = "https://registry-1.docker.io/v2";
+    const API_ROOT: &'static str = "https://registry.hub.docker.com/v2";
 
     pub fn new() -> Self {
         ApiClient {
