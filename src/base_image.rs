@@ -32,21 +32,21 @@ impl ApiClient {
         }
     }
 
-    pub async fn pull_layers(&mut self, image: &str) -> Result<()> {
+    pub async fn pull_layers(&mut self, image: &str, root: &str) -> Result<()> {
         let image: Image = image.into();
         let manifest = self.get_manifest(&image).await?;
 
         for layer in manifest.fsLayers.into_iter() {
             let bytes = self.fetch_layer(&image.name, layer.blobSum).await?;
-            self.unpack(bytes)?;
+            self.unpack(bytes, root)?;
         }
         Ok(())
     }
 
-    fn unpack(&self, bytes: Bytes) -> Result<()> {
+    fn unpack(&self, bytes: Bytes, root: &str) -> Result<()> {
         let tar = GzDecoder::new(Cursor::new(bytes).reader());
         let mut archive = Archive::new(tar);
-        archive.unpack("/")?;
+        archive.unpack(root)?;
         Ok(())
     }
 

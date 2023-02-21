@@ -6,7 +6,7 @@ use std::io;
 use std::io::Write;
 use std::os::unix::fs::chroot;
 use std::process::exit;
-use tempfile::tempdir;
+use tempfile::{tempdir, TempDir};
 mod base_image;
 use base_image::*;
 
@@ -18,10 +18,14 @@ async fn main() -> Result<()> {
     let command = &args[3];
     let command_args = &args[4..];
 
-    change_root(command)?;
+    let root = tempdir()?;
 
     let mut client = ApiClient::new();
-    client.pull_layers(image).await?;
+    client
+        .pull_layers(image, root.path().to_str().unwrap())
+        .await?;
+
+    change_root(root, command)?;
 
     let status = run_command(command, command_args)?;
 
@@ -31,8 +35,7 @@ async fn main() -> Result<()> {
     }
 }
 
-fn change_root(command: &str) -> Result<()> {
-    let root = tempdir()?;
+fn change_root(root: TempDir, command: &str) -> Result<()> {
     let relative_command = match command.strip_prefix("/") {
         Some(p) => p,
         _ => command,
