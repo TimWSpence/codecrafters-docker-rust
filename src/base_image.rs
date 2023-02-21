@@ -23,6 +23,8 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    const API_ROOT: &str = "https://registry-1.docker.io/v2";
+
     pub fn new() -> Self {
         ApiClient {
             client: reqwest::Client::new(),
@@ -68,8 +70,10 @@ impl ApiClient {
         let resp = self
             .client
             .get(format!(
-                "https://registry.hub.docker.com/v2/library/{}/blobs/{}",
-                name, digest
+                "{}/library/{}/blobs/{}",
+                ApiClient::API_ROOT,
+                name,
+                digest
             ))
             // Should have been set in manifest fetch
             .bearer_auth(self.token.as_ref().unwrap())
@@ -83,8 +87,10 @@ impl ApiClient {
         let mut req = self
             .client
             .get(format!(
-                "https://registry.hub.docker.com/v2/library/{}/manifests/{}",
-                image.name, image.reference
+                "{}/library/{}/manifests/{}",
+                ApiClient::API_ROOT,
+                image.name,
+                image.reference
             ))
             .header(
                 "Accept",
@@ -148,7 +154,7 @@ impl From<&str> for Image {
         let mut split = value.split(":");
         Image {
             name: split.next().unwrap().to_string(),
-            reference: split.next().get_or_insert("latest").to_string()
+            reference: split.next().get_or_insert("latest").to_string(),
         }
     }
 }
